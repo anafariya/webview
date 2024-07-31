@@ -1,234 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Face Mesh with Color Analysis</title>
-    <script defer src="main.dart.js"></script>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="webview">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>webview</title>
+  <link rel="manifest" href="manifest.json">
 </head>
-
 <body>
-    <div class="container">
-        <video class="input_video"></video>
-        <canvas class="output_canvas" width="1280px" height="720px"></canvas>
-        <div class="color-display"></div>
-    </div>
-    <div class="control-panel"></div>
+  <script src="flutter_bootstrap.js" async></script>
 </body>
-
-<style>
-    .container {
-        position: relative;
-        width: 100%;
-        height: 100vh;
-    }
-    .input_video {
-        display: none;
-    }
-    .output_canvas {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        left: 0;
-        top: 0;
-    }
-    .color-display {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        padding: 10px;
-        background-color: rgba(0,0,0,0.5);
-        color: white;
-        font-family: Arial, sans-serif;
-    }
-</style>
-
-<script>
-let faceMesh, camera;
-const videoElement = document.getElementsByClassName('input_video')[0];
-const canvasElement = document.getElementsByClassName('output_canvas')[0];
-const canvasCtx = canvasElement.getContext('2d');
-const rgbValues = {r: [], g: [], b: []};
-const processingTime = 30000; // 30 seconds
-let startTime;
-
-function onResults(results) {
-    const videoWidth = 1280;
-    const videoHeight = 720;
-
-    // Canvas setup
-    canvasCtx.save();
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-
-    if (results.multiFaceLandmarks) {
-        for (const landmarks of results.multiFaceLandmarks) {
-            drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION,
-                           {color: '#C0C0C070', lineWidth: 1});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, {color: '#FF3030'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, {color: '#FF3030'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_IRIS, {color: '#FF3030'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, {color: '#30FF30'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, {color: '#30FF30'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_IRIS, {color: '#30FF30'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: '#E0E0E0'});
-            drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {color: '#E0E0E0'});
-
-            // Perform color analysis
-            const color = processFrame(results.image, landmarks);
-            if (color) {
-                rgbValues.r.push(color[0]);
-                rgbValues.g.push(color[1]);
-                rgbValues.b.push(color[2]);
-                updateColorDisplay(color);
-            }
-        }
-    }
-    canvasCtx.restore();
-}
-
-function processFrame(image, landmarks) {
-    const regions = {
-        forehead: [103, 67, 109, 10, 338, 297, 332, 334, 9, 105, 104],
-        rightCheek: [101, 36, 206, 207, 187, 147, 123, 116, 117, 118],
-        leftCheek: [330, 266, 426, 427, 411, 376, 352, 345, 346, 347]
-    };
-
-    const allRegionsColors = [];
-
-    for (const [regionName, indices] of Object.entries(regions)) {
-        const regionPoints = indices.map(index => ({
-            x: landmarks[index].x * image.width,
-            y: landmarks[index].y * image.height
-        }));
-
-        const minX = Math.min(...regionPoints.map(p => p.x));
-        const maxX = Math.max(...regionPoints.map(p => p.x));
-        const minY = Math.min(...regionPoints.map(p => p.y));
-        const maxY = Math.max(...regionPoints.map(p => p.y));
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = maxX - minX;
-        tempCanvas.height = maxY - minY;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(image, minX, minY, tempCanvas.width, tempCanvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
-
-        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-        const data = imageData.data;
-
-        let sumR = 0, sumG = 0, sumB = 0, count = 0;
-        for (let i = 0; i < data.length; i += 4) {
-            sumR += data[i];
-            sumG += data[i + 1];
-            sumB += data[i + 2];
-            count++;
-        }
-
-        if (count > 0) {
-            allRegionsColors.push([sumR / count, sumG / count, sumB / count]);
-        }
-    }
-
-    if (allRegionsColors.length > 0) {
-        const avgColor = allRegionsColors.reduce((acc, color) => [
-            acc[0] + color[0] / allRegionsColors.length,
-            acc[1] + color[1] / allRegionsColors.length,
-            acc[2] + color[2] / allRegionsColors.length
-        ], [0, 0, 0]);
-
-        return avgColor.map(Math.round);
-    }
-
-    return null;
-}
-
-function updateColorDisplay(color) {
-    const colorDisplay = document.querySelector('.color-display');
-    const colorString = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-    colorDisplay.style.backgroundColor = colorString;
-    colorDisplay.textContent = `Average Color: ${colorString}`;
-}
-
-function initializeFaceMesh() {
-    faceMesh = new FaceMesh({locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-    }});
-    faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-    });
-    faceMesh.onResults(onResults);
-}
-
-function initializeCamera() {
-    camera = new Camera(videoElement, {
-        onFrame: async () => {
-            await faceMesh.send({image: videoElement});
-        },
-        width: 1280,
-        height: 720
-    });
-    camera.start();
-}
-
-function stopProcessing() {
-    // Stop the camera and faceMesh processing
-    camera.stop();
-    faceMesh.close();
-}
-
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-    });
-}
-
-async function loadLibraries() {
-    try {
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
-        console.log("All libraries loaded successfully");
-    } catch (error) {
-        console.error("Error loading libraries:", error);
-        throw error;
-    }
-}
-
-async function initializeApplication() {
-    console.log("Initializing application...");
-    try {
-        await loadLibraries();
-        
-        // Check if FaceMesh is defined
-        if (typeof FaceMesh === 'undefined') {
-            throw new Error("FaceMesh is not defined after loading libraries");
-        }
-        
-        initializeFaceMesh();
-        initializeCamera();
-        console.log("Application initialized successfully");
-
-        // Start processing and store RGB values
-        startTime = Date.now();
-        setTimeout(() => {
-            console.log("Processing complete. RGB values:", rgbValues);
-            stopProcessing(); // Stop processing after 5 seconds
-        }, processingTime);
-
-    } catch (error) {
-        console.error("Error initializing application:", error);
-    }
-}
-
-// Start the initialization process when the window has loaded
-window.onload = initializeApplication;
-</script>
-
 </html>

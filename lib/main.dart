@@ -9,7 +9,7 @@ void main() {
   ui.platformViewRegistry.registerViewFactory(
     'hello-world-html',
     (int viewId) => html.IFrameElement()
-      ..src = 'index.html'
+      ..src = 'my_face_mesh.html'
       ..style.border = 'none',
   );
 
@@ -35,13 +35,16 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Face Mesh with Color Analysis'),
-      ),
+      // appBar: AppBar(
+      //   title: const Text('Face Mesh with Color Analysis'),
+      // ),
       body: const SizedBox(
         width: double.infinity,
         height: double.infinity,
-        child: HtmlElementView(viewType: 'hello-world-html'),
+        child: 
+        
+        // Text("hi")
+        HtmlElementView(viewType: 'hello-world-html'),
       ),
     );
   }
