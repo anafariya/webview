@@ -109,9 +109,13 @@ function callAPI() {
         redChannel: rgbValues.r,
         greenChannel: rgbValues.g,
         blueChannel: rgbValues.b,
-        gender: "male",
-        email: "test@example.com",
-        fullname: "John Doe"
+        "metadata":{
+    "fps": 30,
+    "user_id": "Q2zm7hvypyWUng1TIfGELpMPKPt1",
+    "gender": "Male",
+    "email": "test@example.com",
+    "fullname": "John Doe"
+    }
     };
 
     fetch(apiUrl, {
