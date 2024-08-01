@@ -12,7 +12,6 @@ void main() {
       ..src = 'my_face_mesh.html'
       ..style.border = 'none',
   );
-
   runApp(const MyApp());
 }
 

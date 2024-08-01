@@ -1,23 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Face Mesh with Color Analysis</title>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
     <div class="container">
-        <video class="input_video" style="display: none;"></video>
+        <video class="input_video"></video>
         <canvas class="output_canvas" width="1280px" height="720px"></canvas>
         <div class="color-display"></div>
     </div>
     <div class="control-panel"></div>
-    <div id="error-message" style="color: red;"></div>
 </body>
 
 <style>
@@ -25,6 +19,9 @@
         position: relative;
         width: 100%;
         height: 100vh;
+    }
+    .input_video {
+        display: none;
     }
     .output_canvas {
         width: 100%;
@@ -49,18 +46,15 @@ let faceMesh, camera;
 const videoElement = document.getElementsByClassName('input_video')[0];
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
-const colorDisplay = document.getElementsByClassName('color-display')[0];
-const errorMessageElement = document.getElementById('error-message');
-let analysisActive = true;
 const rgbValues = {r: [], g: [], b: []};
-let frameCount = 0;
+const processingTime = 5000; // 5 seconds
 let startTime;
 
 function onResults(results) {
-    if (!analysisActive) return;
+    const videoWidth = 1280;
+    const videoHeight = 720;
 
-    frameCount++;
-
+    // Canvas setup
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
@@ -78,63 +72,24 @@ function onResults(results) {
             drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: '#E0E0E0'});
             drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {color: '#E0E0E0'});
 
-            // Perform color analysis only for frames 100 to 600
-            if (frameCount >= 100 && frameCount <= 600) {
-                const color = processFrame(results.image, landmarks);
-                if (color) {
-                    rgbValues.r.push(color[0]);
-                    rgbValues.g.push(color[1]);
-                    rgbValues.b.push(color[2]);
-                    updateColorDisplay(color);
-                }
+            // Perform color analysis
+            const color = processFrame(results.image, landmarks);
+            if (color) {
+                rgbValues.r.push(color[0]);
+                rgbValues.g.push(color[1]);
+                rgbValues.b.push(color[2]);
+                updateColorDisplay(color);
             }
         }
     }
     canvasCtx.restore();
-
-    // Check if 30 seconds have passed
-    if (Date.now() - startTime >= 30000) {
-        analysisActive = false;
-        console.log('Face analysis stopped after 30 seconds');
-        console.log("Processing complete. RGB values:", rgbValues);
-        callAPI();
-    }
-}
-
-function callAPI() {
-    console.log('>>>>>callAPI');
-
-    const apiUrl = 'https://w428omuxvc.execute-api.ap-south-1.amazonaws.com/prod/process-rppg';
-    const data = {
-        redChannel: rgbValues.r,
-        greenChannel: rgbValues.g,
-        blueChannel: rgbValues.b,
-        gender: "male",
-        email: "test@example.com",
-        fullname: "John Doe"
-    };
-
-    fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('API Response:', data);
-    })
-    .catch((error) => {
-        console.error('Error calling API:', error);
-    });
 }
 
 function processFrame(image, landmarks) {
     const regions = {
-        forehead: [10, 108, 151, 9, 336, 337, 338, 339, 340],
-        rightCheek: [36, 31, 39, 0, 267, 269, 270, 409],
-        leftCheek: [266, 261, 269, 230, 37, 39, 40, 185]
+        forehead: [103, 67, 109, 10, 338, 297, 332, 334, 9, 105, 104],
+        rightCheek: [101, 36, 206, 207, 187, 147, 123, 116, 117, 118],
+        leftCheek: [330, 266, 426, 427, 411, 376, 352, 345, 346, 347]
     };
 
     const allRegionsColors = [];
@@ -186,6 +141,7 @@ function processFrame(image, landmarks) {
 }
 
 function updateColorDisplay(color) {
+    const colorDisplay = document.querySelector('.color-display');
     const colorString = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
     colorDisplay.style.backgroundColor = colorString;
     colorDisplay.textContent = `Average Color: ${colorString}`;
@@ -201,46 +157,80 @@ function initializeFaceMesh() {
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5
     });
-    console.log("facemesh started for 30s");
     faceMesh.onResults(onResults);
 }
 
 function initializeCamera() {
     camera = new Camera(videoElement, {
         onFrame: async () => {
-            if (analysisActive) {
-                await faceMesh.send({image: videoElement});
-            }
+            await faceMesh.send({image: videoElement});
         },
         width: 1280,
         height: 720
     });
-    camera.start()
-        .then(() => {
-            console.log('Camera started successfully');
-            startTime = Date.now(); // Start the timer when the camera starts
-        })
-        .catch((error) => {
-            console.error('Error starting camera:', error);
-            errorMessageElement.textContent = 'Failed to start camera: ' + error.message;
-        });
+    camera.start();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM fully loaded and parsed');
-    initializeFaceMesh();
-    initializeCamera();
-});
+function stopProcessing() {
+    // Stop the camera and faceMesh processing
+    camera.stop();
+    faceMesh.close();
 
-// Error handling for camera access
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(function(stream) {
-        console.log('Camera access granted');
-    })
-    .catch(function(error) {
-        console.error('Error accessing the camera:', error);
-        errorMessageElement.textContent = 'Failed to access camera: ' + error.message;
+    // Log the rgbValues after processing is complete
+    console.log("Processing complete. RGB values:", rgbValues);
+}
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
     });
+}
+
+async function loadLibraries() {
+    try {
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+        console.log("All libraries loaded successfully");
+    } catch (error) {
+        console.error("Error loading libraries:", error);
+        throw error;
+    }
+}
+
+async function initializeApplication() {
+    console.log("Initializing application...");
+    try {
+        await loadLibraries();
+        
+        // Check if FaceMesh is defined
+        if (typeof FaceMesh === 'undefined') {
+            throw new Error("FaceMesh is not defined after loading libraries");
+        }
+        
+        initializeFaceMesh();
+        initializeCamera();
+        console.log("Application initialized successfully");
+
+        // Start processing and store RGB values
+        startTime = Date.now();
+        setTimeout(() => {
+            console.log("Processing complete. RGB values:", rgbValues);
+            stopProcessing(); // Stop processing after 5 seconds
+        }, processingTime);
+
+    } catch (error) {
+        console.error("Error initializing application:", error);
+    }
+}
+
+// Start the initialization process when the window has loaded
+window.onload = initializeApplication;
 </script>
 
 </html>
