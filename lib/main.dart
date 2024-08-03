@@ -22,6 +22,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       title: 'Face Mesh with Color Analysis',
+      debugShowCheckedModeBanner: false,
       
       home: const MyHomePage(),
     );
@@ -43,7 +44,7 @@ class MyHomePage extends StatelessWidget {
         child: 
         
         // Text("hi")
-        HtmlElementView(viewType: 'hello-world-html'),
+        HtmlElementView(viewType: 'hello-world-html', ),
       ),
     );
   }
