@@ -14,12 +14,15 @@ let analysisActive = false;
 let rgbValues = { r: [], g: [], b: [] };
 let frameCount = 0;
 let startTime;
+let capturedFrame = null;
 
 // Initialize face mesh
 function initializeFaceMesh() {
-    faceMesh = new FaceMesh({ locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-    }});
+    faceMesh = new FaceMesh({
+        locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }
+    });
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
@@ -29,11 +32,11 @@ function initializeFaceMesh() {
     faceMesh.onResults(onResults);
 }
 
-// Initialize camera and always show video feed
+// Initialize camera
 function initializeCamera() {
     camera = new Camera(videoElement, {
         onFrame: async () => {
-            await faceMesh.send({ image: videoElement });  // Send frames to face mesh when scanning
+            await faceMesh.send({ image: videoElement });
         },
         width: 1280,
         height: 720
@@ -48,54 +51,26 @@ function initializeCamera() {
         });
 }
 
-startScanButton.addEventListener('click', () => {
-    startScan();
-});
+// Function to capture, compress, and convert frame to Base64
+function captureCompressAndEncode(image, quality = 0.7) {
+    return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-function startScan() {
-    analysisActive = true;
-    startTime = Date.now();
-    frameCount = 0;
-    rgbValues = { r: [], g: [], b: [] };
-
-    // Show the scan progress message
-    scanProgressMessage.style.display = 'block';
-    progressBox2.style.display = 'none'; // Hide progress box 2 when starting scan
-
-    // Start the progress bar animation
-    animateProgressBar();
-}
-
-function animateProgressBar() {
-    const totalTime = 30000; // 30 seconds
-    const interval = 100; // Update every 100 ms
-    let progress = 0;
-
-    const progressInterval = setInterval(() => {
-        if (!analysisActive || progress >= 100) {
-            clearInterval(progressInterval);
-            return;
-        }
-
-        progress = ((Date.now() - startTime) / totalTime) * 100;
-        progressValue.textContent = `${Math.floor(progress)}%`;
-        progressCircle.style.background = `conic-gradient(
-            #4caf50 ${progress * 3.6}deg,
-            #ccc ${progress * 3.6}deg
-        )`;
-
-        // Check if 30 seconds have passed
-        if (Date.now() - startTime >= totalTime) {
-            analysisActive = false;
-            console.log('Face analysis stopped after 30 seconds');
-            console.log("Processing complete. RGB values:", rgbValues);
-            callAPI();
-        }
-    }, interval);
+        // Compress and convert to Base64
+        canvas.toBlob((blob) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        }, 'image/jpeg', quality);
+    });
 }
 
 function onResults(results) {
-    if (!analysisActive) return; // Skip processing if analysis is not active
+    if (!analysisActive) return;
 
     frameCount++;
 
@@ -126,43 +101,20 @@ function onResults(results) {
                     updateColorDisplay(color);
                 }
             }
+
+            // Capture and process the 101st frame
+            if (frameCount === 101 && !capturedFrame) {
+                captureCompressAndEncode(results.image)
+                    .then(base64Image => {
+                        capturedFrame = base64Image.replace("data:image/jpeg;base64,", "");
+                        console.log('Compressed Base64 encoded 101st frame:', capturedFrame);
+
+                        // You can send this base64Image to your server or use it as needed
+                    });
+            }
         }
     }
     canvasCtx.restore();
-}
-
-function callAPI() {
-    console.log('>>>>>callAPI');
-
-    const apiUrl = 'https://w428omuxvc.execute-api.ap-south-1.amazonaws.com/prod/process-rppg';
-    const data = {
-        redChannel: rgbValues.r,
-        greenChannel: rgbValues.g,
-        blueChannel: rgbValues.b,
-        "metadata": {
-            "fps": 30,
-            "user_id": "Q2zm7hvypyWUng1TIfGELpMPKPt1",
-            "gender": "Male",
-            "email": "test@example.com",
-            "fullname": "John Doe"
-        }
-    };
-
-    fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('API Response:', data);
-        switchProgressBoxes(); // Switch progress boxes after API call
-    })
-    .catch((error) => {
-        console.error('Error calling API:', error);
-    });
 }
 
 function processFrame(image, landmarks) {
@@ -225,13 +177,89 @@ function updateColorDisplay(color) {
     colorDisplay.textContent = `Average Color: ${colorString}`;
 }
 
+function startScan() {
+    analysisActive = true;
+    startTime = Date.now();
+    frameCount = 0;
+    capturedFrame = null;
+    rgbValues = { r: [], g: [], b: [] };
+
+    scanProgressMessage.style.display = 'block';
+    progressBox2.style.display = 'none';
+
+    animateProgressBar();
+}
+
+function animateProgressBar() {
+    const totalTime = 3000; // 30 seconds
+    const interval = 100; // Update every 100 ms
+    let progress = 0;
+
+    const progressInterval = setInterval(() => {
+        if (!analysisActive || progress >= 100) {
+            clearInterval(progressInterval);
+            return;
+        }
+
+        progress = ((Date.now() - startTime) / totalTime) * 100;
+        progressValue.textContent = `${Math.floor(progress)}%`;
+        progressCircle.style.background = `conic-gradient(
+            #4caf50 ${progress * 3.6}deg,
+            #ccc ${progress * 3.6}deg
+        )`;
+
+        if (Date.now() - startTime >= totalTime) {
+            analysisActive = false;
+            console.log('Face analysis stopped after 30 seconds');
+            console.log("Processing complete. RGB values:", rgbValues);
+            callAPI();
+        }
+    }, interval);
+}
+
+function callAPI() {
+    console.log('>>>>>callAPI');
+
+    const apiUrl = 'https://w428omuxvc.execute-api.ap-south-1.amazonaws.com/prod/process-rppg';
+    const data = {
+        redChannel: rgbValues.r,
+        greenChannel: rgbValues.g,
+        blueChannel: rgbValues.b,
+        "image": capturedFrame,
+        "metadata": {
+            "fps": 30,
+            "user_id": "Q2zm7hvypyWUng1TIfGELpMPKPt1",
+            "gender": "Male",
+            "email": "test@example.com",
+            "fullname": "John Doe"
+        }
+    };
+
+    fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('API Response:', data);
+        switchProgressBoxes();
+    })
+    .catch((error) => {
+        console.error('Error calling API:', error);
+    });
+}
+
 function switchProgressBoxes() {
     progressBox1.style.display = 'none';
     progressBox2.style.display = 'flex';
 }
 
+startScanButton.addEventListener('click', startScan);
+
 window.addEventListener('load', () => {
-    // Initialize the camera and face mesh on page load
     initializeFaceMesh();
     initializeCamera();
 });
