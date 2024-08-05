@@ -15,6 +15,19 @@ let rgbValues = { r: [], g: [], b: [] };
 let frameCount = 0;
 let startTime;
 let capturedFrame = null;
+let scanInterval = null;
+
+function showErrorDialog(message) {
+    const errorDialog = document.getElementById('error-dialog');
+    const errorDialogMessage = document.getElementById('error-dialog-message');
+    errorDialogMessage.textContent = message;
+    errorDialog.style.display = 'block';
+}
+
+function closeErrorDialog() {
+    const errorDialog = document.getElementById('error-dialog');
+    errorDialog.style.display = 'none';
+}
 
 // Initialize face mesh
 function initializeFaceMesh() {
@@ -47,7 +60,7 @@ function initializeCamera() {
         })
         .catch((error) => {
             console.error('Error starting camera:', error);
-            errorMessageElement.textContent = 'Failed to start camera: ' + error.message;
+            showErrorDialog('Failed to start camera: ' + error.message);
         });
 }
 
@@ -178,98 +191,83 @@ function updateColorDisplay(color) {
 }
 
 function startScan() {
-    analysisActive = true;
-    startTime = Date.now();
+    if (analysisActive) {
+        // Cancel scan
+        analysisActive = false;
+        resetValues();
+        clearInterval(scanInterval);
+        startScanButton.textContent = 'Start Scan';
+        scanProgressMessage.style.display = 'none';
+        progressBox1.style.display = 'flex';
+        progressBox2.style.display = 'none';
+    } else {
+        // Start scan
+        analysisActive = true;
+        startTime = Date.now();
+        frameCount = 0;
+        capturedFrame = null;
+        rgbValues = { r: [], g: [], b: [] };
+
+        scanProgressMessage.style.display = 'block';
+        progressBox2.style.display = 'none';
+        startScanButton.textContent = 'Cancel';
+
+        animateProgressBar();
+    }
+}
+
+function resetValues() {
     frameCount = 0;
-    capturedFrame = null;
     rgbValues = { r: [], g: [], b: [] };
-
-    scanProgressMessage.style.display = 'block';
-    progressBox2.style.display = 'none';
-
-    animateProgressBar();
+    capturedFrame = null;
+    progressValue.textContent = '0%';
+    progressCircle.style.background = 'conic-gradient(#ccc 0deg, #ccc 360deg)';
+    colorDisplay.textContent = '';
+    scanProgressMessage.textContent = 'Scan in progress...';
 }
 
 function animateProgressBar() {
-    const totalTime = 3000; // 30 seconds
-    const interval = 100; // Update every 100 ms
-    let progress = 0;
+    const duration = 20000; // 20 seconds
+    const updateInterval = 100; // 100ms
 
-    const progressInterval = setInterval(() => {
-        if (!analysisActive || progress >= 100) {
-            clearInterval(progressInterval);
-            return;
+    const startTime = Date.now();
+    scanInterval = setInterval(() => {
+        const elapsedTime = Date.now() - startTime;
+        const progress = Math.min(elapsedTime / duration, 1);
+        const progressDegrees = progress * 360;
+        const progressPercent = Math.floor(progress * 100);
+
+        progressCircle.style.background = `conic-gradient(#4d5bf9 ${progressDegrees}deg, #ccc ${progressDegrees}deg)`;
+        progressValue.textContent = `${progressPercent}%`;
+
+        if (progress >= 1) {
+            clearInterval(scanInterval);
+            completeScan();
         }
-
-        progress = ((Date.now() - startTime) / totalTime) * 100;
-        progressValue.textContent = `${Math.floor(progress)}%`;
-        progressCircle.style.background = `conic-gradient(
-            #4caf50 ${progress * 3.6}deg,
-            #ccc ${progress * 3.6}deg
-        )`;
-
-        if (Date.now() - startTime >= totalTime) {
-            analysisActive = false;
-            console.log('Face analysis stopped after 30 seconds');
-            console.log("Processing complete. RGB values:", rgbValues);
-            callAPI();
-        }
-    }, interval);
+    }, updateInterval);
 }
 
-function callAPI() {
-    console.log('>>>>>callAPI');
-
-    const apiUrl = 'https://w428omuxvc.execute-api.ap-south-1.amazonaws.com/prod/process-rppg';
-    const data = {
-        redChannel: rgbValues.r,
-        greenChannel: rgbValues.g,
-        blueChannel: rgbValues.b,
-        "image": capturedFrame,
-        "metadata": {
-            "fps": 30,
-            "user_id": "Q2zm7hvypyWUng1TIfGELpMPKPt1",
-            "gender": "Male",
-            "email": "test@example.com",
-            "fullname": "John Doe"
-        }
-    };
-
-    fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('API Response:', data);
-        switchProgressBoxes();
-    })
-    .catch((error) => {
-        console.error('Error calling API:', error);
-    });
-}
-
-function switchProgressBoxes() {
+function completeScan() {
+    analysisActive = false;
+    startScanButton.textContent = 'Start Scan';
+    scanProgressMessage.style.display = 'none';
     progressBox1.style.display = 'none';
     progressBox2.style.display = 'flex';
+
+    const avgR = rgbValues.r.reduce((a, b) => a + b, 0) / rgbValues.r.length;
+    const avgG = rgbValues.g.reduce((a, b) => a + b, 0) / rgbValues.g.length;
+    const avgB = rgbValues.b.reduce((a, b) => a + b, 0) / rgbValues.b.length;
+
+    colorDisplay.textContent = `Average Color: rgb(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)})`;
+    console.log('Average R:', avgR);
+    console.log('Average G:', avgG);
+    console.log('Average B:', avgB);
 }
 
 startScanButton.addEventListener('click', startScan);
+document.getElementById('error-dialog-close').addEventListener('click', closeErrorDialog);
 
 window.addEventListener('load', () => {
     initializeFaceMesh();
     initializeCamera();
 });
-
-// Error handling for camera access
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(function (stream) {
-        console.log('Camera access granted');
-    })
-    .catch(function (error) {
-        console.error('Error accessing the camera:', error);
-        errorMessageElement.textContent = 'Failed to access camera: ' + error.message;
-    });
