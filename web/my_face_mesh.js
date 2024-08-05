@@ -120,7 +120,6 @@ function onResults(results) {
             if (frameCount >= 100 && frameCount <= 600) {
                 const color = processFrame(results.image, landmarks);
                 if (color) {
-                    console.log("Color values:", color);
                     rgbValues.r.push(color[0]);
                     rgbValues.g.push(color[1]);
                     rgbValues.b.push(color[2]);
