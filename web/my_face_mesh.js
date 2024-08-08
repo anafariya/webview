@@ -81,7 +81,6 @@ function captureCompressAndEncode(image, quality = 0.7) {
         }, 'image/jpeg', quality);
     });
 }
-
 function onResults(results) {
     if (!analysisActive) return;
 
@@ -89,6 +88,11 @@ function onResults(results) {
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    // Flip the image horizontally
+    canvasCtx.scale(-1, 1);
+    canvasCtx.translate(-canvasElement.width, 0);
+
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
     if (results.multiFaceLandmarks) {
