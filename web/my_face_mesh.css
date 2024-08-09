@@ -205,7 +205,3 @@ body {
   font-size: 20px;
   font-weight: bold;
 }
-
-.input_video {
-  transform: scaleX(-1);
-}
