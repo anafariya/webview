@@ -2102,7 +2102,10 @@ window.addEventListener('load', () => {
     showLoadingIndicator(); // Show loading indicator at the start
     initializeFaceMesh();
     initializeCamera();
-    hideLoadingIndicator()
+    setInterval(() => {
+        hideLoadingIndicator()
+
+    }, 2000);
     ; // Hide loading indicator after initialization
 });
 function clearCanvas() {
