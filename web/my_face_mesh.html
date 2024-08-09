@@ -12,6 +12,9 @@
 </head>
 
 <body>
+    <!-- <div id="loading-indicator" style="display: block;">
+        <p>Loading...</p>
+      </div> -->
     <div class="container">
         <!-- Display the camera feed -->
         <video class="input_video" autoplay playsinline></video>
@@ -28,7 +31,7 @@
             <p id="scan-progress-message" style="display: none;">Scan in Progress</p>
             <div class="buttons-container">
                 <button class="start-scan-button" id="start-scan-button">Start Scan</button> 
-                <button class="homepage-button">Back to Homepage</button>
+                <button class="homepage-button" id="homepage-button">Back to Homepage</button>
             </div>
         </div>
 
@@ -60,6 +63,6 @@
     
     <div class="control-panel"></div>
     <div id="error-message" style="color: red;"></div>
-    <script src="my_face_mesh.js"></script>
+    <script src="script2.js"></script>
 </body>
 </html>
