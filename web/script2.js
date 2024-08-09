@@ -1434,6 +1434,8 @@
 
 let faceMesh, camera;
 const videoElement = document.getElementsByClassName('input_video')[0];
+videoElement.style.transform = 'scaleX(-1)';
+
 const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
 const colorDisplay = document.getElementsByClassName('color-display')[0];
@@ -1486,7 +1488,15 @@ function closeErrorDialog() {
 
     errorDialog.style.display = 'none';
 }
+function showLoadingIndicator() {
+    document.getElementById('loading-indicator').style.display = 'block';
+    document.querySelector('body').style.overflow = 'hidden';
+}
 
+function hideLoadingIndicator() {
+    document.getElementById('loading-indicator').style.display = 'none';
+    document.querySelector('body').style.overflow = 'auto';
+}
 window.addEventListener('message', function (event) {
     console.log(event)
     console.log(`FROM [addEventListener] ${event.data}`)
@@ -1659,21 +1669,12 @@ function captureCompressAndEncode(image, quality = 0.7) {
         }, 'image/jpeg', quality);
     });
 }
-
 function onResults(results) {
-
-
     if (results.multiFaceLandmarks.length === 0) {
-        // Reset values if no faces are detected
-        // analysisActive = false;
-
         initValues();
-
         showErrorDialog('No face detected.\nPlace your face in front of camera.');
-
         return;
     } else {
-        // initValues();
         closeErrorDialog();
     }
     
@@ -1683,15 +1684,17 @@ function onResults(results) {
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Apply the flip transformation to the canvas
+    canvasCtx.scale(-1, 1);
+    canvasCtx.translate(-canvasElement.width, 0);
+
+    // Draw the video image on the flipped canvas
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-    
-   
-    
     if (results.multiFaceLandmarks) {
         for (const landmarks of results.multiFaceLandmarks) {
-            drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION,
-                { color: '#C0C0C070', lineWidth: 1 });
+            drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, { color: '#C0C0C070', lineWidth: 1 });
             drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, { color: '#E0E0E0', lineWidth: 1 });
             drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, { color: '#E0E0E0', lineWidth: 1 });
             drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_IRIS, { color: '#E0E0E0', lineWidth: 1 });
@@ -1701,31 +1704,25 @@ function onResults(results) {
             drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, { color: '#E0E0E0' });
             drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, { color: '#E0E0E0', lineWidth: 1 });
 
-            // Perform color analysis only for frames 100 to 600
             if (frameCount >= 100 && frameCount <= 600) {
                 const color = processFrame(results.image, landmarks);
                 if (color) {
                     rgbValues.r.push(color[0]);
                     rgbValues.g.push(color[1]);
                     rgbValues.b.push(color[2]);
-                    // updateColorDisplay(color);
                 }
             }
 
-            // Capture and process the 101st frame
             if (frameCount === 101 && !capturedFrame) {
                 captureCompressAndEncode(results.image)
                     .then(base64Image => {
                         capturedFrame = base64Image.replace("data:image/jpeg;base64,", "");
                         console.log('Compressed Base64 encoded 101st frame:', capturedFrame);
-
-                        // You can send this base64Image to your server or use it as needed
                     });
-
             }
         }
     }
-    canvasCtx.restore();
+    canvasCtx.restore();  // Restore the canvas state to ensure the flip does not affect future drawings
 }
 
 function processFrame(image, landmarks) {
@@ -1801,31 +1798,31 @@ function processFrame(image, landmarks) {
 
 //     animateProgressBar();
 // }
-
 function startScan() {
-
     if (analysisActive) {
-
         // Cancel scan
-
         analysisActive = false;
 
-        // resetValues();
+        // Clear the canvas
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+        // Stop the interval that updates the progress bar
         clearInterval(scanInterval);
 
-        startScanButton.textContent = 'Start Scan';
+        // Reset the progress indicator
+        progressValue.textContent = "0%";
+        progressCircle.style.background = `conic-gradient(
+            #ccc 0deg,
+            #ccc 360deg
+        )`;
 
-        scanProgressMessage.style.display = 'none';
-
-        progressBox1.style.display = 'flex';
-
-        progressBox2.style.display = 'none';
-
+        // Reset button text and visibility of UI elements
+        startScanButton.textContent = "Start Scan";
+        scanProgressMessage.style.display = "none";
+        progressBox1.style.display = "flex";
+        progressBox2.style.display = "none";
     } else {
-
         // Start scan
-
         analysisActive = true;
         startTime = Date.now();
         frameCount = 0;
@@ -1833,21 +1830,12 @@ function startScan() {
         capturedFrame = null;
         rgbValues = { r: [], g: [], b: [] };
 
-
-
-        scanProgressMessage.style.display = 'block';
-
-        progressBox2.style.display = 'none';
-   
-
-        startScanButton.textContent = 'Cancel';
-
-
+        scanProgressMessage.style.display = "block";
+        progressBox2.style.display = "none";
+        startScanButton.textContent = "Cancel";
 
         animateProgressBar();
-
     }
-
 }
 
 function initValues() {
@@ -1889,7 +1877,6 @@ function resetValues() {
 }
 
 
-
 function animateProgressBar() {
     const totalTime = 30000; // 30 seconds
     const interval = 100; // Update every 100 ms
@@ -1898,6 +1885,8 @@ function animateProgressBar() {
     const progressInterval = setInterval(() => {
         if (!analysisActive || progress >= 100) {
             clearInterval(progressInterval);
+            // Reset to normal camera view without mesh processing
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             return;
         }
 
@@ -1910,12 +1899,13 @@ function animateProgressBar() {
 
         if (Date.now() - startTime >= totalTime) {
             analysisActive = false;
-            console.log('Face analysis stopped after 30 seconds');
+            console.log("Face analysis stopped after 30 seconds");
             console.log("Processing complete. RGB values:", rgbValues.r.length);
 
-            // setTimeout(callAPI, 5000)
-            checkCapturedFrameAndCallApi()
+            checkCapturedFrameAndCallApi();
 
+            // Reset to normal camera view without mesh processing
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         }
     }, interval);
 }
@@ -2109,10 +2099,21 @@ function backToHome(){
 
 
 window.addEventListener('load', () => {
+    showLoadingIndicator(); // Show loading indicator at the start
     initializeFaceMesh();
     initializeCamera();
+    hideLoadingIndicator()
+    ; // Hide loading indicator after initialization
 });
+function clearCanvas() {
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+}
 
+// Clear the canvas and reset to normal view when canceling or finishing the scan
+function stopFaceMeshProcessing() {
+    analysisActive = false;
+    clearCanvas();
+}
 document.getElementById('error-dialog-close').addEventListener('click', closeErrorDialog);
 
 

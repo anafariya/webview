@@ -12,11 +12,13 @@
 </head>
 
 <body>
-    <!-- <div id="loading-indicator" style="display: block;">
-        <p>Loading...</p>
-      </div> -->
+ 
     <div class="container">
         <!-- Display the camera feed -->
+        <div id="loading-indicator">
+            <div class="loading-circle"></div>
+            <p>Loading...</p>
+        </div>
         <video class="input_video" autoplay playsinline></video>
         <canvas class="output_canvas" width="1280px" height="720px"></canvas>
         <div class="color-display"></div>

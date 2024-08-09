@@ -9,24 +9,42 @@ body {
   height: 100vh;
   overflow: hidden;
 }
-/* 
+
 #loading-indicator {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: #fff;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  background-color: white; /* White background */
+  z-index: 5; /* On top of everything */
 }
 
-#loading-indicator ~ * {
-  visibility: hidden;
-} */
+.loading-circle {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #DC7D57;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
 
+#loading-indicator p {
+  margin-top: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #DC7D57;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
 .input_video {
   position: absolute;
   width: 100%;
@@ -60,7 +78,6 @@ body {
   padding: 15px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* Align items to the start (left) */
   justify-content: center;
   color: black;
   font-family: Arial, sans-serif;
@@ -70,10 +87,15 @@ body {
   border-radius: 20px;
   gap: 0;
   z-index: 3; /* Above video and canvas */
+  margin-left: auto;
+  margin-right: auto;
+  left: 0;
+  right: 0;
 }
 
 .progress-box-1 {
-  left: 5%; /* Position 5% from the left */
+  align-items: center; /* Center contents horizontally */
+  text-align: center; /* Center text horizontally */
 }
 
 .progress-box-1 p {
@@ -81,7 +103,6 @@ body {
 }
 
 .progress-box-2 {
-  left: 5%; /* Position 5% from the left */
   display: none; /* Hide initially */
   align-items: center; /* Center contents horizontally */
   text-align: center; /* Center text horizontally */
@@ -183,18 +204,27 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  margin-top: 10%;
+
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 1000; /* Ensure it stays above all other content */
 }
 
 .error-dialog-content {
+  position: relative;
   background-color: white;
   padding: 20px;
-  border-radius: 5px;
+  border-radius: 10px;
   text-align: center;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  /* Center the dialog box */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 300px;
+  width: 80%;
 }
 
 .error-dialog-close {
@@ -204,4 +234,11 @@ body {
   cursor: pointer;
   font-size: 20px;
   font-weight: bold;
+  color: #333; /* Dark gray color for close button */
+}
+
+.error-dialog-message {
+  margin-bottom: 20px;
+  font-size: 16px; /* Standard font size for the error message */
+  color: #444; /* Slightly darker text color */
 }
