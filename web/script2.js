@@ -2056,33 +2056,27 @@ function callAPI() {
         });
 }
 
-// // Initialize camera
 function initializeCamera() {
- 
-
-
-    camera = new Camera(videoElement, {
-        onFrame: async () => {
-            await faceMesh.send({ image: videoElement });
-        },
-        // width: 1920,
-        // height: 1080,
-        width: 1280,
-        height: 720,
-        // facingMode: 'user'
-
-    });
-    camera.start()
-        .then(() => {
-            console.log('Camera started successfully');
-        })
-        .catch((error) => {
-            console.error('Error starting camera:', error);
-            // errorMessageElement.textContent = 'Failed to start camera: ' + error.message;
-            showErrorDialog('Failed to start camera: Try updating your Browser');
+    return new Promise((resolve, reject) => {
+        camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await faceMesh.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720
         });
+        camera.start()
+            .then(() => {
+                console.log('Camera started successfully');
+                resolve(); // Resolve the promise when the camera starts successfully
+            })
+            .catch((error) => {
+                console.error('Error starting camera:', error);
+                reject(error); // Reject the promise if there's an error
+                showErrorDialog('Failed to start camera: Try updating your Browser');
+            });
+    });
 }
-
 
 function switchProgressBoxes() {
     progressBox1.style.display = 'none';
@@ -2097,17 +2091,21 @@ function backToHome(){
     sendMessageToFlutter("BACK_TO_HOME");
 }
 
-
 window.addEventListener('load', () => {
-    showLoadingIndicator(); // Show loading indicator at the start
+    showLoadingIndicator(); 
     initializeFaceMesh();
-    initializeCamera();
-    setInterval(() => {
-        hideLoadingIndicator()
-
-    }, 2000);
-    ; // Hide loading indicator after initialization
+    initializeCamera().then(() => {
+        setTimeout(() => {
+            hideLoadingIndicator(); 
+            document.getElementsByClassName('progress-box-1')[0].style.display = 'block'; // Make progress box 1 visible after loading indicator is hidden
+        }, 2000);
+    }).catch((error) => {
+        console.error('Error initializing camera:', error);
+        hideLoadingIndicator(); 
+        showErrorDialog('Failed to start camera: ' + error.message);
+    });
 });
+
 function clearCanvas() {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 }
