@@ -1670,6 +1670,7 @@ function captureCompressAndEncode(image, quality = 0.7) {
     });
 }
 function onResults(results) {
+    if (!analysisActive) return;
     if (results.multiFaceLandmarks.length === 0) {
         initValues();
         showErrorDialog('No face detected.\nPlace your face in front of camera.');
@@ -1678,7 +1679,7 @@ function onResults(results) {
         closeErrorDialog();
     }
     
-    if (!analysisActive) return;
+    // if (!analysisActive) return;
 
     frameCount++;
 
