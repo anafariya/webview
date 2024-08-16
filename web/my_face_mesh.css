@@ -11,17 +11,18 @@ body {
 }
 
 #loading-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: fixed; /* Changed to fixed to ensure it stays in the center */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Center the indicator */
+  width: 100px; /* Width adjusted for the loading circle container */
+  height: 100px; /* Height adjusted for the loading circle container */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: white; /* White background */
-  z-index: 5; /* On top of everything */
+  background-color: white;
+  z-index: 5;
 }
 
 .loading-circle {
@@ -165,7 +166,10 @@ body {
   border-radius: 30px;
   width: 180px;
 }
-
+#scan-progress-message {
+  text-align: left; /* Align text to the left */
+  width: 100%; /* Ensure the element spans the full width of the parent */
+}
 .homepage-button {
   color: #213d68;
   font-size: 16px;
@@ -204,8 +208,6 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  margin-top: 10%;
-
   display: flex;
   justify-content: center;
   align-items: center;
