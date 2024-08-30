@@ -242,3 +242,30 @@ body {
   font-size: 16px; /* Standard font size for the error message */
   color: #444; /* Slightly darker text color */
 }
+.fps-box {
+  position: fixed; /* Use fixed positioning */
+  top: 10px; /* Distance from the top */
+  right: 10px; /* Distance from the right */
+  background-color: white;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 4; /* Ensure it's above other content */
+}
+
+#fps-message {
+  font-size: 16px;
+  color: #333; /* Dark text color */
+}
+
+#fps-message.low {
+  color: red; /* Change text color to red when FPS is low */
+}
+#increasing-fps-message {
+  color: green;
+  font-weight: bold;
+  position: absolute;
+  top: 10px; /* Adjust position */
+  left: 10px; /* Adjust position */
+  display: none; /* Initially hidden */
+}
