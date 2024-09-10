@@ -11,12 +11,10 @@ body {
 }
 
 #loading-indicator {
-  position: fixed; /* Changed to fixed to ensure it stays in the center */
+  position: fixed; /* Stays in the center */
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%); /* Center the indicator */
-  width: 100px; /* Width adjusted for the loading circle container */
-  height: 100px; /* Height adjusted for the loading circle container */
+  transform: translate(-50%, -50%); /* Centers the entire loading indicator */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -31,6 +29,7 @@ body {
   border-top-color: transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  box-sizing: border-box; /* Ensures padding/border doesn't affect width/height */
 }
 
 #loading-indicator p {
@@ -38,7 +37,9 @@ body {
   font-size: 18px;
   font-weight: bold;
   color: #DC7D57;
+  text-align: center; /* Ensures the text is centered horizontally */
 }
+
 
 @keyframes spin {
   100% {

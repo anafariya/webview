@@ -1,7 +1,7 @@
 let faceMesh, camera;
 const videoElement = document.getElementsByClassName("input_video")[0];
 videoElement.style.transform = "scaleX(-1)";
-
+let maxFPS = 0; // Start with a default value of 0
 const canvasElement = document.getElementsByClassName("output_canvas")[0];
 const canvasCtx = canvasElement.getContext("2d");
 const colorDisplay = document.getElementsByClassName("color-display")[0];
@@ -27,13 +27,55 @@ let userHeight = null;
 let userWeight = null;
 let userWaist = null;
 let userAge = null;
-let fpsStartTime = null;
-let scanInterval = null;
 
-let lastFrameTime = Date.now();
-let frameSkip = 2; // Process every third frame
-let frameCounter = 0;
+// let fpsStartTime = null;
+// let scanInterval = null;
+// let fpsInterval = null;
+// let maxFPS = 0; // Variable to store the maximum FPS
+let lastFrameTime = Date.now(); // To calculate FPS
+function displayRGBValues() {
+  const rgbValueElement = document.getElementById("rgb-value");
 
+  // Update the RGB values length in the UI
+  rgbValueElement.textContent = `RGB values length: ${rgbValues.r.length}`;
+}
+
+// Start updating FPS every second
+function startUpdatingFPS() {
+  fpsInterval = setInterval(updateFPS, 1000); // Update FPS every 1 second
+}
+
+// Stop updating FPS when necessary
+function stopUpdatingFPS() {
+  if (fpsInterval) {
+    clearInterval(fpsInterval);
+  }
+}
+function updateFPS() {
+  const now = Date.now();
+  const deltaTime = (now - lastFrameTime) / 1000; // Time since last frame in seconds
+  lastFrameTime = now;
+
+  const fps = Math.round(1 / deltaTime); // Calculate FPS for this frame
+
+  // Update maxFPS if current FPS is higher
+  if (fps > maxFPS) {
+    maxFPS = fps;
+  }
+
+  // Update the current FPS value in the UI
+  const fpsValueElement = document.getElementById("fps-value");
+  const fpsMessageElement = document.getElementById("fps-message");
+  fpsValueElement.textContent = fps;
+
+  // Display max FPS
+  const maxFPSValueElement = document.getElementById("max-fps-value");
+  if (maxFPSValueElement) {
+    // maxFPSValueElement.textContent = `Max FPS: ${maxFPS}`;
+  }
+
+  // Handle FPS warnings (if FPS drops below 30)
+}
 function sendMessageToFlutter(message) {
   window.parent.postMessage(message, "*");
 }
@@ -53,7 +95,6 @@ function closeErrorDialog() {
 
   errorDialog.style.display = "none";
 }
-
 function showLoadingIndicator() {
   document.getElementById("loading-indicator").style.display = "block";
   document.querySelector("body").style.overflow = "hidden";
@@ -63,10 +104,10 @@ function hideLoadingIndicator() {
   document.getElementById("loading-indicator").style.display = "none";
   document.querySelector("body").style.overflow = "auto";
 }
-
 window.addEventListener("message", function (event) {
   console.log(event);
   console.log(`FROM [addEventListener] ${event.data}`);
+  // sendMessageToFlutter(event.data);
   if (event.data.includes("waist:")) {
     userWaist = Number(event.data.split(":")[1]);
   }
@@ -92,11 +133,9 @@ window.addEventListener("message", function (event) {
     userUid = event.data.split(":")[1];
   }
 });
-
 window.customEmailFunction = function (data) {
   console.log(data);
 };
-
 // Initialize face mesh
 function initializeFaceMesh() {
   try {
@@ -106,19 +145,118 @@ function initializeFaceMesh() {
       },
     });
     faceMesh.setOptions({
+      selfieMode: true,
       maxNumFaces: 1,
-      refineLandmarks: false, // Disable refining landmarks
+      refineLandmarks: true,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
     faceMesh.onResults(onResults);
 
     console.log("FaceMesh initialized");
+    // hideLoadingIndicator();
   } catch (error) {
     console.error("Error initializing FaceMesh:", error);
+    // hideLoadingIndicator();
+    // You can also call showErrorDialog function here
+    // showErrorDialog('Error initializing FaceMesh: ' + error.message);
   }
+  // showLoadingIndicator();
 }
 
+function hideLoadingIndicator() {
+  document.getElementById("loading-indicator").style.display = "none";
+  document.querySelector("body").style.overflow = "auto";
+}
+
+function showLoadingIndicator() {
+  document.getElementById("loading-indicator").style.display = "block";
+  document.querySelector("body").style.overflow = "hidden";
+}
+
+// function initializeCamera() {
+//     // const videoElement = document.querySelector('.input_video');
+
+//     const constraints = {
+//         video: {
+//             facingMode: 'user', // Request the front-facing camera
+//             width: { ideal: 1920 },
+//             height: { ideal: 1080 }
+//         }
+//     };
+
+//     navigator.mediaDevices.getUserMedia(constraints)
+//         .then((stream) => {
+//             videoElement.srcObject = stream;
+//             videoElement.onloadedmetadata = () => {
+//                 videoElement.play();
+//                 const camera = new Camera(videoElement, {
+//                     onFrame: async () => {
+//                         await faceMesh.send({ image: videoElement });
+//                     },
+//                     width: 1920,
+//                     height: 1080
+//                 });
+//                 camera.start()
+//                     .then(() => {
+//                         console.log('Camera started successfully');
+//                     })
+//                     .catch((error) => {
+//                         console.error('Error starting camera:', error);
+//                         showErrorDialog2('Failed to start camera: ' + error.message);
+//                     });
+//             };
+//         })
+//         .catch((error) => {
+//             console.error('Error accessing the camera: ', error);
+//             showErrorDialog2('Failed to access camera: ' + error.message);
+//         });
+// }
+
+// function initializeCamera() {
+//     const constraints = {
+//         video: {
+//             width: { ideal: 1920 },
+//             height: { ideal: 1080 },
+//             facingMode: 'user'
+//         }, secure: true
+//     };
+
+//     navigator.mediaDevices.getUserMedia(constraints)
+//         .then(stream => {
+//             videoElement.srcObject = stream;
+//             return videoElement.play();
+//         })
+//         .then(() => {
+//             console.log('Camera started successfully');
+
+//             camera = new Camera(videoElement, {
+//                 onFrame: async () => {
+//                     await faceMesh.send({ image: videoElement });
+//                 },
+//                 width: 1920,
+//                 height: 1080
+//             });
+
+//             return camera.start();
+//         })
+//         .then(() => {
+//             console.log('FaceMesh processing started');
+//         })
+//         .catch(error => {
+//             console.error('Error starting camera:', error);
+//             showErrorDialog('Failed to start camera: ' + error.message);
+//         });
+// }
+
+function showErrorDialog2(message) {
+  const errorDialog = document.getElementById("error-dialog");
+  const errorDialogMessage = document.getElementById("error-dialog-message");
+  errorDialogMessage.textContent = message;
+  errorDialog.style.display = "block";
+}
+
+// Function to capture, compress, and convert frame to Base64
 function captureCompressAndEncode(image, quality = 0.7) {
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
@@ -127,6 +265,7 @@ function captureCompressAndEncode(image, quality = 0.7) {
     const ctx = canvas.getContext("2d");
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
+    // Compress and convert to Base64
     canvas.toBlob(
       (blob) => {
         const reader = new FileReader();
@@ -138,11 +277,9 @@ function captureCompressAndEncode(image, quality = 0.7) {
     );
   });
 }
-
 function onResults(results) {
-  frameCounter++;
-  if (frameCounter % frameSkip !== 0) return; // Skip frames based on frameSkip
-
+  if (!analysisActive) return;
+  // fpsControl.tick();
   if (results.multiFaceLandmarks.length === 0) {
     initValues();
     showErrorDialog("No face detected.\nPlace your face in front of camera.");
@@ -151,16 +288,19 @@ function onResults(results) {
     closeErrorDialog();
   }
 
-  if (!analysisActive) return;
+  // if (!analysisActive) return;
+  // fpsControl.tick();
 
   frameCount++;
 
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+  // Apply the flip transformation to the canvas
   canvasCtx.scale(-1, 1);
   canvasCtx.translate(-canvasElement.width, 0);
 
+  // Draw the video image on the flipped canvas
   canvasCtx.drawImage(
     results.image,
     0,
@@ -175,11 +315,56 @@ function onResults(results) {
         color: "#C0C0C070",
         lineWidth: 1,
       });
-      // Only draw essential elements to reduce processing load
-      // Remove or comment out other unnecessary drawing functions
+      drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_IRIS, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_IRIS, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {
+        color: "#E0E0E0",
+      });
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {
+        color: "#E0E0E0",
+        lineWidth: 1,
+      });
+
+      if (frameCount >= 100 && frameCount <= 600) {
+        const color = processFrame(results.image, landmarks);
+        if (color) {
+          rgbValues.r.push(color[0]);
+          rgbValues.g.push(color[1]);
+          rgbValues.b.push(color[2]);
+        }
+      }
+
+      if (frameCount === 101 && !capturedFrame) {
+        captureCompressAndEncode(results.image).then((base64Image) => {
+          capturedFrame = base64Image.replace("data:image/jpeg;base64,", "");
+          console.log("Compressed Base64 encoded 101st frame:", capturedFrame);
+        });
+      }
     }
   }
-  canvasCtx.restore();
+  canvasCtx.restore(); // Restore the canvas state to ensure the flip does not affect future drawings
 }
 
 function processFrame(image, landmarks) {
@@ -258,25 +443,50 @@ function processFrame(image, landmarks) {
   return null;
 }
 
+// function updateColorDisplay(color) {
+//     const colorString = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+//     colorDisplay.textContent = `Average Color: ${colorString}`;
+// }
+
+// function startScan() {
+//     analysisActive = true;
+//     startTime = Date.now();
+//     frameCount = 0;
+//     fpsStartTime = Date.now();
+//     capturedFrame = null;
+//     rgbValues = { r: [], g: [], b: [] };
+
+//     scanProgressMessage.style.display = 'block';
+//     progressBox2.style.display = 'none';
+
+//     animateProgressBar();
+// }
 function startScan() {
   if (analysisActive) {
+    // Cancel scan
     analysisActive = false;
 
+    // Clear the canvas
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+    // Stop the interval that updates the progress bar
     clearInterval(scanInterval);
 
+    // Reset the progress indicator
     progressValue.textContent = "0%";
     progressCircle.style.background = `conic-gradient(
             #ccc 0deg,
             #ccc 360deg
         )`;
 
+    // Reset button text and visibility of UI elements
     startScanButton.textContent = "Start Scan";
     scanProgressMessage.style.display = "none";
     progressBox1.style.display = "flex";
     progressBox2.style.display = "none";
+    displayRGBValues();
   } else {
+    // Start scan
     analysisActive = true;
     startTime = Date.now();
     frameCount = 0;
@@ -306,6 +516,8 @@ function initValues() {
   scanProgressMessage.style.display = "block";
 
   progressBox2.style.display = "none";
+
+  // startScanButton.textContent = 'Start Scan';
 }
 
 function resetValues() {
@@ -325,13 +537,14 @@ function resetValues() {
 }
 
 function animateProgressBar() {
-  const totalTime = 30000;
-  const interval = 100;
+  const totalTime = 30000; // 30 seconds
+  const interval = 100; // Update every 100 ms
   let progress = 0;
 
   const progressInterval = setInterval(() => {
     if (!analysisActive || progress >= 100) {
       clearInterval(progressInterval);
+      // Reset to normal camera view without mesh processing
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
       return;
     }
@@ -350,60 +563,111 @@ function animateProgressBar() {
 
       checkCapturedFrameAndCallApi();
 
+      // Reset to normal camera view without mesh processing
       canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     }
   }, interval);
 }
 
-function updateFPS() {
-  const now = Date.now();
-  const deltaTime = (now - lastFrameTime) / 1000;
-  lastFrameTime = now;
+// function animateProgressBar() {
 
-  const fps = Math.round(1 / deltaTime);
+//     const duration = 20000; // 20 seconds
 
-  const fpsValueElement = document.getElementById('fps-value');
-  const fpsMessageElement = document.getElementById('fps-message');
+//     const updateInterval = 100; // 100ms
+//     const startTime = Date.now();
 
-  fpsValueElement.textContent = fps;
+//     scanInterval = setInterval(() => {
 
-  if (fps < 30) {
-    fpsMessageElement.style.color = 'red';
-    document.getElementById('low-fps-message').style.display = 'block';
-  } else {
-    fpsMessageElement.style.color = '#333';
-    document.getElementById('low-fps-message').style.display = 'none';
-  }
-}
+//         const elapsedTime = Date.now() - startTime;
+
+//         const progress = Math.min(elapsedTime / duration, 1);
+
+//         const progressDegrees = progress * 360;
+
+//         const progressPercent = Math.floor(progress * 100);
+
+//         progressCircle.style.background = `conic-gradient(#4d5bf9 ${progressDegrees}deg, #ccc ${progressDegrees}deg)`;
+
+//         progressValue.textContent = `${progressPercent}%`;
+//         if (progress >= 1) {
+
+//             clearInterval(scanInterval);
+
+//             completeScan();}
+
+//         }, updateInterval);}
+
+//     function completeScan() {
+
+//         analysisActive = false;
+
+//         startScanButton.textContent = 'Start Scan';
+
+//         scanProgressMessage.style.display = 'none';
+
+//         progressBox1.style.display = 'none';
+
+//         progressBox2.style.display = 'flex';
+
+//         // const avgR = rgbValues.r.reduce((a, b) => a + b, 0) / rgbValues.r.length;
+
+//         // const avgG = rgbValues.g.reduce((a, b) => a + b, 0) / rgbValues.g.length;
+
+//         // const avgB = rgbValues.b.reduce((a, b) => a + b, 0) / rgbValues.b.length;
+
+//         // colorDisplay.textContent = `Average Color: rgb(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)})`;
+
+//         // console.log('Average R:', avgR);
+
+//         // console.log('Average G:', avgG);
+
+//         // console.log('Average B:', avgB);
+
+//     }
 
 function checkCapturedFrameAndCallApi() {
   if (capturedFrame != null) {
     callAPI();
   } else {
+    //keep calling after every 2 seconds
     setTimeout(checkCapturedFrameAndCallApi, 2000);
+  }
+  displayRGBValues();
+}
+
+function checkImage() {
+  console.log({ capturedFrame });
+  if (capturedFrame != null) {
+    callAPI();
   }
 }
 
 function callAPI() {
+  // sendMessageToFlutter("FETCH METADATA FROM FLUTTER");
+
   console.log(">>>>>callAPI");
   console.log(">>>>>callAPI Email:-- ", userEmail);
   console.log(">>>>>callAPI Gender:-- ", userGender);
   console.log(">>>>>callAPI Uid:-- ", userUid);
   console.log(">>>>>callAPI Name:-- ", userName);
 
-  const elapsedTime = (Date.now() - fpsStartTime) / 1000;
+  const elapsedTime = (Date.now() - fpsStartTime) / 1000; // Convert to seconds
   const fps = frameCount / elapsedTime;
   console.log(">>>>>callAPI FPS:-- ", fps);
 
   const apiUrl =
-    "https://w428omuxvc.execute-api.ap-south-1.amazonaws.com/prod/process-rppg";
+    "https://ok67gldbh5.execute-api.ap-south-1.amazonaws.com/prod/process-rppg";
+  // 'https://w428omuxvc.execute-api.ap-south-1.amazonaws.com/prod/process-rppg';
   const data = {
     redChannel: rgbValues.r,
     greenChannel: rgbValues.g,
     blueChannel: rgbValues.b,
     image: capturedFrame,
     metadata: {
-      fps: Math.round(fps),
+      //generate calculate fps code
+      //round off fps to integer
+
+      // fps: Math.round(fps),
       user_id: userUid,
       gender: userGender,
       email: userEmail,
@@ -414,6 +678,9 @@ function callAPI() {
       age: userAge,
     },
   };
+
+  console.log("data--");
+  console.log({ data });
 
   fetch(apiUrl, {
     method: "POST",
@@ -431,6 +698,7 @@ function callAPI() {
       sendMessageToFlutter("DONE");
     })
     .catch((error) => {
+      // sendMessageToFlutter("ERROR")
       console.error("Error calling API:", error);
       showErrorDialog("Error calling API: " + error.message);
     });
@@ -441,21 +709,24 @@ function initializeCamera() {
     camera = new Camera(videoElement, {
       onFrame: async () => {
         await faceMesh.send({ image: videoElement });
-        updateFPS(); // Call updateFPS to show the current FPS
+        updateFPS();
       },
-      width: 1920, // Lower resolution to 1280x720 for better performance
-      height: 1080, // Lower resolution to 1280x720 for better performance
+      width: 1280,
+      height: 720,
+      facingMode: "user",
+      // width: 1920,
+      // height: 1080
     });
     camera
       .start()
       .then(() => {
         console.log("Camera started successfully");
-        resolve();
-        document.getElementById('current-resolution').textContent = 'Current Resolution: 1280x720'; // Update the displayed resolution
+        document.getElementById("fps-box").style.display = "block";
+        resolve(); // Resolve the promise when the camera starts successfully
       })
       .catch((error) => {
         console.error("Error starting camera:", error);
-        reject(error);
+        reject(error); // Reject the promise if there's an error
         showErrorDialog("Failed to start camera: Try updating your Browser");
       });
   });
@@ -481,9 +752,10 @@ window.addEventListener("load", () => {
     .then(() => {
       setTimeout(() => {
         hideLoadingIndicator();
+
         document.getElementsByClassName("progress-box-1")[0].style.display =
-          "block";
-        document.getElementById("fps-box").style.display = "block"; // Ensure FPS box is displayed
+          "block"; // Make progress box 1 visible after loading indicator is hidden
+        startUpdatingFPS();
       }, 2000);
     })
     .catch((error) => {
@@ -497,18 +769,21 @@ function clearCanvas() {
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 }
 
+// Clear the canvas and reset to normal view when canceling or finishing the scan
 function stopFaceMeshProcessing() {
   analysisActive = false;
   clearCanvas();
 }
-
 document
   .getElementById("error-dialog-close")
   .addEventListener("click", closeErrorDialog);
 
+//Error handling for camera access
 navigator.mediaDevices
   .getUserMedia({
     video: true,
+
+    // facingMode: 'user'
   })
   .then(function (stream) {
     console.log("Camera access granted");
@@ -518,3 +793,21 @@ navigator.mediaDevices
     errorMessageElement.textContent =
       "Failed to access camera: " + error.message;
   });
+
+// const constraints = {
+//     video: {
+//         facingMode: 'user', // Request the front-facing camera
+//         width: { ideal: 1920 },
+//         height: { ideal: 1080 }
+//     }
+// };
+
+// //Error handling for camera access
+// navigator.mediaDevices.getUserMedia(constraints)
+//     .then(function (stream) {
+//         console.log('Camera access granted');
+//     })
+//     .catch(function (error) {
+//         console.error('Error accessing the camera:', error);
+//         errorMessageElement.textContent = 'Failed to access camera: ' + error.message;
+//     });
